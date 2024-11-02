@@ -2,7 +2,7 @@
   <div id="app" class="app-container">
     <!-- Problem Description Section -->
     <div class="problem-container">
-      <h3>Problem Description</h3>
+      <h3 class="section-title">Problem Description</h3>
       <div v-html="problemDescription" class="problem-description"></div>
     </div>
 
@@ -10,10 +10,10 @@
     <div class="editor-container">
       <div class="editor-controls">
         <label for="language" class="form-label">Select Language:</label>
-        <select v-model="selectedLanguage" id="language" class="form-control language-select">
+        <select v-model="selectedLanguage" id="language" class="form-control language-select" @change="updateLanguage">
+          <option value="cpp">C++</option>
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>
-          <option value="cpp">C++</option>
         </select>
         <button @click="runCode" class="btn btn-run">Run Code</button>
       </div>
@@ -37,7 +37,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted } from "vue";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
@@ -48,13 +48,65 @@ import { cpp } from "@codemirror/lang-cpp";
 export default {
   setup() {
     const editor = ref(null);
-    const code = ref("// Write your code here...\n");
+    const code = ref("// Write your C++ code here...\n");
     const inputTest = ref("");
     const output = ref("");
-    const selectedLanguage = ref("javascript");
+    const selectedLanguage = ref("cpp"); // 默认设置为 C++
     const problemDescription = ref("");
 
     let editorView;
+
+    // 动态更新语言扩展
+    const getLanguageExtension = (language) => {
+      switch (language) {
+        case "javascript":
+          return javascript();
+        case "python":
+          return python();
+        case "cpp":
+        default:
+          return cpp();
+      }
+    };
+
+    const initializeEditor = () => {
+      editorView = new EditorView({
+        state: EditorState.create({
+          doc: code.value,
+          extensions: [
+            basicSetup,
+            getLanguageExtension(selectedLanguage.value), // 根据默认语言设置扩展
+            EditorView.lineWrapping,
+            EditorView.theme({
+              "&.cm-editor": { textAlign: "left" },
+            }),
+          ],
+        }),
+        parent: editor.value,
+      });
+    };
+
+    const updateLanguage = () => {
+      if (editorView) {
+        const languageExtension = getLanguageExtension(selectedLanguage.value);
+        editorView.dispatch({
+          effects: EditorState.reconfigure.of([basicSetup, languageExtension, EditorView.lineWrapping]),
+        });
+
+        // 根据选择的语言更新代码模板
+        code.value =
+          selectedLanguage.value === "cpp"
+            ? "// Write your C++ code here...\n"
+            : selectedLanguage.value === "javascript"
+            ? "// Write your JavaScript code here...\n"
+            : "# Write your Python code here...\n";
+
+        // 将新模板设置到编辑器
+        editorView.dispatch({
+          changes: { from: 0, to: editorView.state.doc.length, insert: code.value },
+        });
+      }
+    };
 
     const runCode = async () => {
       if (editorView) {
@@ -72,23 +124,6 @@ export default {
       }
     };
 
-    const initializeEditor = () => {
-      const languageExtension =
-        selectedLanguage.value === "javascript"
-          ? javascript()
-          : selectedLanguage.value === "python"
-          ? python()
-          : cpp();
-
-      editorView = new EditorView({
-        state: EditorState.create({
-          doc: code.value,
-          extensions: [basicSetup, languageExtension],
-        }),
-        parent: editor.value,
-      });
-    };
-
     onMounted(() => {
       initializeEditor();
 
@@ -100,20 +135,6 @@ export default {
         });
     });
 
-    watch(selectedLanguage, () => {
-      if (editorView) {
-        const languageExtension =
-          selectedLanguage.value === "javascript"
-            ? javascript()
-            : selectedLanguage.value === "python"
-            ? python()
-            : cpp();
-        editorView.dispatch({
-          effects: EditorState.reconfigure.of([basicSetup, languageExtension]),
-        });
-      }
-    });
-
     return {
       editor,
       code,
@@ -122,22 +143,26 @@ export default {
       selectedLanguage,
       problemDescription,
       runCode,
+      updateLanguage,
     };
   },
 };
 </script>
 
 <style>
+/* 整体布局 */
 .app-container {
   display: flex;
   flex-direction: row;
   gap: 20px;
   padding: 20px;
-  background-color: #f5f6f7;
+  background-color: #f9fafb;
   height: 100vh;
   overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
+/* 问题描述区域 */
 .problem-container {
   flex: 1;
   padding: 20px;
@@ -146,43 +171,62 @@ export default {
   overflow-y: auto;
 }
 
+.section-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
 .problem-description {
   font-size: 14px;
   color: #333;
   line-height: 1.6;
 }
 
+/* 编辑器和输出区域 */
 .editor-container {
   flex: 2;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background-color: #f5f6f7;
+  padding: 20px;
+  border-radius: 8px;
 }
 
 .editor-controls {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 10px;
 }
 
 .language-select {
   width: 150px;
+  padding: 5px;
 }
 
 .btn-run {
   background-color: #28a745;
   color: white;
+  padding: 5px 15px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
 }
 
 .code-editor {
   flex: 1;
-  height: 300px;
-  background: #1e1e1e;
-  color: white;
+  background: #f7f7f8;
+  color: #333;
   border-radius: 8px;
+  padding: 10px;
   overflow-y: auto;
+  font-family: monospace;
+  border: 1px solid #ddd;
 }
 
+/* 输入和输出框 */
 .input-output-container {
   display: flex;
   gap: 20px;
@@ -193,15 +237,22 @@ export default {
   background-color: #ffffff;
   padding: 10px;
   border-radius: 8px;
+  border: 1px solid #ddd;
 }
 
 .input-area, .output-area {
   width: 100%;
-  height: 100px;
   padding: 10px;
   font-size: 14px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  resize: vertical;
+  font-family: monospace;
+  color: #333;
+}
+
+.output-area {
+  background-color: #f5f6f7;
 }
 </style>
 
