@@ -41,7 +41,7 @@
         <!-- Output Section -->
         <div class="input-output-box output-box">
           <label for="outputArea" class="input-output-title">Output:</label>
-          <pre :class="outputClass" id="outputArea">{{ output }}</pre>
+          <textarea v-model="output" id="outputArea" :class="outputClass" class="form-control output-area" rows="4"></textarea>
         </div>
       </div>
     </div>
@@ -96,7 +96,7 @@ export default {
                 textAlign: "left",
                 minHeight: "400px",
                 height: "100%",
-                overflow: "auto", // 允许代码内容滑动
+                overflow: "auto",
               },
               ".cm-content": {
                 textAlign: "left",
@@ -167,16 +167,15 @@ export default {
 </script>
 
 <style>
-/* 让整个网页填满浏览器宽度和高度 */
 html, body, #app {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-/* 整体布局 */
 .app-container {
   display: flex;
   flex-direction: row;
@@ -188,14 +187,13 @@ html, body, #app {
   box-sizing: border-box;
 }
 
-/* 问题描述区域 */
 .problem-container {
   flex: 1;
   padding: 20px;
   background-color: #ffffff;
   border-right: 1px solid #ddd;
   overflow-y: auto;
-  max-width: 40%;
+  height: 100%;
 }
 
 .section-title {
@@ -210,16 +208,17 @@ html, body, #app {
   line-height: 1.6;
 }
 
-/* 编辑器和输入、输出区域 */
 .editor-container {
-  flex: 3;
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 20px;
   background-color: #f5f6f7;
   padding: 20px;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .editor-controls {
@@ -249,23 +248,23 @@ html, body, #app {
   color: #333;
   border-radius: 8px;
   padding: 10px;
-  overflow: hidden;
+  overflow: auto;
   font-family: monospace;
   border: 1px solid #ddd;
-  height: 400px; /* 固定编辑器高度，内容可滑动 */
+  height: calc(50% - 20px);
 }
 
-/* 输入、目标和输出区域 */
 .input-target-output-section {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  height: calc(50% - 20px);
 }
 
 .input-target-container {
   display: flex;
   gap: 20px;
-  flex: 1; /* 保持自适应 */
+  flex: 1;
 }
 
 .input-output-box {
@@ -276,6 +275,7 @@ html, body, #app {
   padding: 10px 20px;
   border-radius: 8px;
   border: 1px solid #ddd;
+  height: 100%;
 }
 
 .input-output-title {
@@ -286,7 +286,7 @@ html, body, #app {
 
 .input-area, .target-area, .output-area {
   flex: 1;
-  height: 100px; /* 固定高度 */
+  height: 100%;
   padding: 10px;
   font-size: 14px;
   border: 1px solid #ddd;
@@ -295,16 +295,22 @@ html, body, #app {
   font-family: monospace;
   color: #333;
   background-color: #f9fafb;
-  overflow: auto; /* 允许内容水平滚动 */
+  overflow: auto;
+}
+
+.output-box {
+  flex: 1;
+  overflow: auto;
+  height: 100%;
 }
 
 .output-area.success {
-  background-color: #d4edda;  /* 绿色背景表示通过 */
+  background-color: #d4edda;
   border-color: #c3e6cb;
 }
 
 .output-area.failure {
-  background-color: #f8d7da;  /* 红色背景表示失败 */
+  background-color: #f8d7da;
   border-color: #f5c6cb;
 }
 </style>
