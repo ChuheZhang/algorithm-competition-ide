@@ -13,15 +13,18 @@ app.use(bodyParser.json());
 app.get('/codeforces-problem', (req, res) => {
     res.json({
         description: `
-            <h4>Sample Problem: Two Sum</h4>
-            <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
-            <p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p>
-            <h5>Example:</h5>
-            <pre>
-                Input: nums = [2, 7, 11, 15], target = 9
-                Output: [0, 1]
-                Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
-            </pre>
+# Sample Problem: Two Sum
+
+Given an array of integers \`nums\` and an integer \`target\`, return indices of the two numbers such that they add up to \`target\`.
+
+You may assume that each input would have **exactly one solution**, and you may not use the same element twice.
+
+## Example:
+\`\`\`
+Input: nums = [2, 7, 11, 15], target = 9
+Output: [0, 1]
+Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
+\`\`\`
         `
     });
 });
@@ -46,6 +49,11 @@ app.post('/run-code', (req, res) => {
     exec(command, (error, stdout, stderr) => {
         if (error) {
             return res.json({ output: stderr });
+        }
+        // 删除 C++ 临时文件
+        if (language === 'cpp') {
+            fs.unlinkSync('temp.cpp');
+            fs.unlinkSync('temp'); // 删除可执行文件
         }
         res.json({ output: stdout });
     });

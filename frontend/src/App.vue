@@ -2,8 +2,7 @@
   <div id="app" class="app-container">
     <!-- 问题描述部分 -->
     <div class="problem-container" :style="{ width: leftWidth + 'px' }">
-      <h3 class="section-title">Problem Description</h3>
-      <div v-html="problemDescription" class="problem-description"></div>
+      <div v-html="renderedDescription" class="problem-description"></div>
     </div>
 
     <!-- 分隔栏 -->
@@ -32,9 +31,8 @@
       <!-- CodeMirror 编辑器 -->
       <div ref="editor" class="code-editor"></div>
 
-      <!-- 输入、目标和输出部分 -->
+      <!-- 输入和目标部分 -->
       <div class="input-target-output-section">
-        <!-- 输入和目标部分 -->
         <div class="input-target-container">
           <!-- 输入部分 -->
           <div class="input-output-box">
@@ -60,7 +58,7 @@
         </div>
 
         <!-- 输出部分 -->
-        <div class="input-output-box output-box">
+        <div v-if="outputVisible" class="input-output-box output-box">
           <label for="outputArea" class="input-output-title">Output:</label>
           <textarea
             :class="outputClass"
@@ -78,6 +76,7 @@
 
 <script>
 import { ref, onMounted, computed } from "vue";
+import { marked } from "marked"; // 引入 marked 库
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
@@ -94,10 +93,15 @@ export default {
     const selectedLanguage = ref("cpp");
     const problemDescription = ref("");
     const isLoading = ref(false);
+    const outputVisible = ref(false); // 控制输出框的显示
+
+    // 计算属性，用于将 Markdown 转换为 HTML
+    const renderedDescription = computed(() => {
+      return marked(problemDescription.value);
+    });
 
     // 初始宽度设置
     const initialWidth = 960; // 1920 / 2
-
     const leftWidth = ref(initialWidth);
     const rightWidth = ref(initialWidth);
 
@@ -108,7 +112,6 @@ export default {
       { value: "cpp", label: "C++", extension: cpp() },
       { value: "javascript", label: "JavaScript", extension: javascript() },
       { value: "python", label: "Python", extension: python() },
-      // 可在此处添加更多语言
     ];
 
     const getLanguageExtension = (language) => {
@@ -118,7 +121,6 @@ export default {
 
     const initializeEditor = () => {
       const languageExtension = getLanguageExtension(selectedLanguage.value);
-
       editorView = new EditorView({
         state: EditorState.create({
           doc: "",
@@ -131,7 +133,7 @@ export default {
                 textAlign: "left",
                 minHeight: "400px",
                 height: "100%",
-                overflow: "auto", // 允许代码内容滑动
+                overflow: "auto",
               },
               ".cm-content": {
                 textAlign: "left",
@@ -146,7 +148,6 @@ export default {
     const updateLanguage = () => {
       if (editorView) {
         const languageExtension = getLanguageExtension(selectedLanguage.value);
-
         editorView.dispatch({
           effects: languageCompartment.reconfigure(languageExtension),
         });
@@ -155,6 +156,7 @@ export default {
 
     const runCode = async () => {
       isLoading.value = true;
+      outputVisible.value = true; // 点击运行后显示输出框
       try {
         const response = await fetch("http://localhost:3000/run-code", {
           method: "POST",
@@ -172,23 +174,28 @@ export default {
 
         const data = await response.json();
         output.value = data.output || "未收到输出。";
+
+        // 在这里判断输出是否与目标一致
+        if (output.value.trim() === targetOutput.value.trim()) {
+          // 如果一致，设置为成功样式
+          outputClass.value = "output-area success";
+        } else {
+          // 如果不一致，设置为失败样式
+          outputClass.value = "output-area failure";
+        }
       } catch (error) {
         output.value = `错误: ${error.message}`;
+        outputClass.value = "output-area failure"; // 错误时也标记为失败
       } finally {
         isLoading.value = false;
       }
     };
 
-    const outputClass = computed(() => {
-      if (output.value === "") return "output-area";
-      return output.value.trim() === targetOutput.value.trim()
-        ? "output-area success"
-        : "output-area failure";
-    });
+    // 初始化输出类
+    const outputClass = ref("output-area");
 
     onMounted(() => {
       initializeEditor();
-
       fetch("http://localhost:3000/codeforces-problem")
         .then((res) => res.json())
         .then((data) => {
@@ -218,7 +225,6 @@ export default {
       const newLeftWidth = startLeftWidth.value + deltaX;
       const newRightWidth = startRightWidth.value - deltaX;
 
-      // 设置最小宽度
       const minWidth = 300;
       if (newLeftWidth > minWidth && newRightWidth > minWidth) {
         leftWidth.value = newLeftWidth;
@@ -238,11 +244,12 @@ export default {
       output,
       targetOutput,
       selectedLanguage,
-      problemDescription,
+      renderedDescription,
       runCode,
       updateLanguage,
       outputClass,
       isLoading,
+      outputVisible, // 返回控制输出框显示的状态
       languages,
       leftWidth,
       rightWidth,
@@ -252,7 +259,11 @@ export default {
 };
 </script>
 
+
+
+
 <style>
+/* 让整个网页填满浏览器宽度和高度 */
 /* 让整个网页填满浏览器宽度和高度 */
 html,
 body,
@@ -314,6 +325,7 @@ body,
   font-size: 14px;
   color: #333;
   line-height: 1.6;
+  text-align: left; /* 确保文本左对齐 */
 }
 
 /* 编辑器和输入、输出区域 */
@@ -359,7 +371,7 @@ body,
   background: #f7f7f8;
   color: #333;
   border-radius: 8px;
-  padding: 10px;
+  padding: 0;
   overflow: auto;
   font-family: monospace;
   border: 1px solid #ddd;
@@ -415,6 +427,7 @@ body,
   color: #333;
   background-color: #f9fafb;
   overflow: auto;
+  outline: none; /* 去掉虚线包围框 */
 }
 
 /* 输出区域 */
@@ -459,10 +472,12 @@ body,
   .editor-container {
     padding-top: 10px;
   }
+  
 
   .divider {
     display: none; /* 小屏幕隐藏分隔栏 */
   }
 }
+
 </style>
 
