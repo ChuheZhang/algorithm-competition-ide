@@ -1,49 +1,75 @@
 <template>
   <div id="app" class="app-container">
-    <div class="center-content">
-      <!-- Problem Description Section -->
-      <div class="problem-container">
-        <h3 class="section-title">Problem Description</h3>
-        <div v-html="problemDescription" class="problem-description"></div>
+    <!-- 问题描述部分 -->
+    <div class="problem-container" :style="{ width: leftWidth + 'px' }">
+      <h3 class="section-title">Problem Description</h3>
+      <div v-html="problemDescription" class="problem-description"></div>
+    </div>
+
+    <!-- 分隔栏 -->
+    <div class="divider" @mousedown="initDrag"></div>
+
+    <!-- 代码编辑器和输入/输出部分 -->
+    <div class="editor-container">
+      <div class="editor-controls">
+        <label for="language" class="form-label">Select Language:</label>
+        <select
+          v-model="selectedLanguage"
+          id="language"
+          class="form-control language-select"
+          @change="updateLanguage"
+        >
+          <option value="cpp">C++</option>
+          <option value="javascript">JavaScript</option>
+          <option value="python">Python</option>
+        </select>
+        <button @click="runCode" class="btn btn-run" :disabled="isLoading">
+          <span v-if="isLoading">运行中...</span>
+          <span v-else>运行代码</span>
+        </button>
       </div>
 
-      <!-- Code Editor and Input/Output Section -->
-      <div class="editor-container">
-        <div class="editor-controls">
-          <label for="language" class="form-label">Select Language:</label>
-          <select v-model="selectedLanguage" id="language" class="form-control language-select" @change="updateLanguage">
-            <option value="cpp">C++</option>
-            <option value="javascript">JavaScript</option>
-            <option value="python">Python</option>
-          </select>
-          <button @click="runCode" class="btn btn-run">Run Code</button>
+      <!-- CodeMirror 编辑器 -->
+      <div ref="editor" class="code-editor"></div>
+
+      <!-- 输入、目标和输出部分 -->
+      <div class="input-target-output-section">
+        <!-- 输入和目标部分 -->
+        <div class="input-target-container">
+          <!-- 输入部分 -->
+          <div class="input-output-box">
+            <label for="inputArea" class="input-output-title">Input:</label>
+            <textarea
+              v-model="inputTest"
+              id="inputArea"
+              class="form-control input-area"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <!-- 目标部分 -->
+          <div class="input-output-box">
+            <label for="targetArea" class="input-output-title">Target:</label>
+            <textarea
+              v-model="targetOutput"
+              id="targetArea"
+              class="form-control target-area"
+              rows="4"
+            ></textarea>
+          </div>
         </div>
 
-        <!-- CodeMirror Editor -->
-        <div ref="editor" class="code-editor"></div>
-
-        <!-- Input, Target, and Output Sections -->
-        <div class="input-target-output-section">
-          <!-- Input and Target Section -->
-          <div class="input-target-container">
-            <!-- Input Section -->
-            <div class="input-output-box">
-              <label for="inputArea" class="input-output-title">Input:</label>
-              <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
-            </div>
-
-            <!-- Target Section -->
-            <div class="input-output-box">
-              <label for="targetArea" class="input-output-title">Target:</label>
-              <textarea v-model="targetOutput" id="targetArea" class="form-control target-area" rows="4"></textarea>
-            </div>
-          </div>
-
-          <!-- Output Section -->
-          <div class="input-output-box output-box">
-            <label for="outputArea" class="input-output-title">Output:</label>
-            <textarea v-model="output" id="outputArea" class="form-control output-area" rows="4"></textarea>
-          </div>
+        <!-- 输出部分 -->
+        <div class="input-output-box output-box">
+          <label for="outputArea" class="input-output-title">Output:</label>
+          <textarea
+            :class="outputClass"
+            v-model="output"
+            id="outputArea"
+            class="form-control output-area"
+            rows="4"
+            readonly
+          ></textarea>
         </div>
       </div>
     </div>
@@ -67,20 +93,25 @@ export default {
     const targetOutput = ref("");
     const selectedLanguage = ref("cpp");
     const problemDescription = ref("");
+    const isLoading = ref(false);
+
+    // 初始宽度设置
+    const initialLeftWidth = 600; // 根据需要调整初始宽度
+    const leftWidth = ref(initialLeftWidth);
 
     let editorView;
     const languageCompartment = new Compartment();
 
+    const languages = [
+      { value: "cpp", label: "C++", extension: cpp() },
+      { value: "javascript", label: "JavaScript", extension: javascript() },
+      { value: "python", label: "Python", extension: python() },
+      // 可在此处添加更多语言
+    ];
+
     const getLanguageExtension = (language) => {
-      switch (language) {
-        case "javascript":
-          return javascript();
-        case "python":
-          return python();
-        case "cpp":
-        default:
-          return cpp();
-      }
+      const lang = languages.find((l) => l.value === language);
+      return lang ? lang.extension : cpp();
     };
 
     const initializeEditor = () => {
@@ -121,7 +152,8 @@ export default {
     };
 
     const runCode = async () => {
-      if (editorView) {
+      isLoading.value = true;
+      try {
         const response = await fetch("http://localhost:3000/run-code", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131,8 +163,17 @@ export default {
             input: inputTest.value,
           }),
         });
+
+        if (!response.ok) {
+          throw new Error(`服务器错误: ${response.statusText}`);
+        }
+
         const data = await response.json();
-        output.value = data.output;
+        output.value = data.output || "未收到输出。";
+      } catch (error) {
+        output.value = `错误: ${error.message}`;
+      } finally {
+        isLoading.value = false;
       }
     };
 
@@ -153,6 +194,45 @@ export default {
         });
     });
 
+    // 拖拽相关
+    const isDragging = ref(false);
+    const startX = ref(0);
+    const startLeftWidth = ref(initialLeftWidth);
+
+    const initDrag = (event) => {
+      isDragging.value = true;
+      startX.value = event.clientX;
+      startLeftWidth.value = leftWidth.value;
+
+      window.addEventListener("mousemove", onDrag);
+      window.addEventListener("mouseup", stopDrag);
+    };
+
+    const onDrag = (event) => {
+      if (!isDragging.value) return;
+      const deltaX = event.clientX - startX.value;
+      let newLeftWidth = startLeftWidth.value + deltaX;
+
+      // 设置最小宽度
+      const minWidth = 300;
+      // 设置最大宽度，避免右侧过窄
+      const maxWidth = window.innerWidth - minWidth - 5; // 分隔栏宽度为5px
+
+      if (newLeftWidth < minWidth) {
+        newLeftWidth = minWidth;
+      } else if (newLeftWidth > maxWidth) {
+        newLeftWidth = maxWidth;
+      }
+
+      leftWidth.value = newLeftWidth;
+    };
+
+    const stopDrag = () => {
+      isDragging.value = false;
+      window.removeEventListener("mousemove", onDrag);
+      window.removeEventListener("mouseup", stopDrag);
+    };
+
     return {
       editor,
       inputTest,
@@ -163,63 +243,72 @@ export default {
       runCode,
       updateLanguage,
       outputClass,
+      isLoading,
+      languages,
+      leftWidth,
+      initDrag,
     };
   },
 };
 </script>
 
 <style>
-/* 让整个网页填满浏览器宽度和高度 */
-html, body, #app {
+/* 全局样式，确保容器填满浏览器 */
+html,
+body,
+#app {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* 整体布局 */
 .app-container {
   display: flex;
   flex-direction: row;
-  gap: 20px;
-  padding: 20px;
   background-color: #f9fafb;
-  box-sizing: border-box;
-  max-width: 1200px;
   width: 100%;
-  height: 100%;
+  height: 100vh; /* 使用视口高度 */
+  box-sizing: border-box;
+  position: relative;
 }
 
-.center-content {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
+/* 分隔栏样式 */
+.divider {
+  width: 5px;
+  background-color: #ccc;
+  cursor: col-resize;
   height: 100%;
-  max-width: 1200px;
+  position: relative;
+  z-index: 1;
 }
 
 /* 问题描述区域 */
 .problem-container {
-  flex: 1;
   padding: 20px;
   background-color: #ffffff;
-  border-right: 1px solid #ddd;
+  border-right: 1px solid #ddd; /* 分隔线 */
   overflow-y: auto;
   height: 100%;
   word-break: break-word; /* 确保文本不会溢出 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* 内容从上方开始 */
+  box-sizing: border-box; /* 包含内边距和边框在内 */
+  transition: width 0.2s ease; /* 平滑过渡 */
 }
 
+/* 标题样式 */
 .section-title {
   font-size: 18px;
   font-weight: bold;
   color: #333;
 }
 
+/* 问题描述文本样式 */
 .problem-description {
   font-size: 14px;
   color: #333;
@@ -228,7 +317,6 @@ html, body, #app {
 
 /* 编辑器和输入、输出区域 */
 .editor-container {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -237,9 +325,12 @@ html, body, #app {
   border-radius: 8px;
   overflow-y: auto;
   height: 100%;
-  box-sizing: border-box;
+  box-sizing: border-box; /* 包含内边距和边框在内 */
+  flex-grow: 1; /* 使右侧容器自适应扩展 */
+  transition: flex-grow 0.2s ease; /* 平滑过渡 */
 }
 
+/* 编辑器控制区域 */
 .editor-controls {
   display: flex;
   align-items: center;
@@ -247,11 +338,13 @@ html, body, #app {
   margin-bottom: 10px;
 }
 
+/* 语言选择下拉框 */
 .language-select {
   width: 150px;
   padding: 5px;
 }
 
+/* 运行按钮 */
 .btn-run {
   background-color: #28a745;
   color: white;
@@ -261,6 +354,7 @@ html, body, #app {
   cursor: pointer;
 }
 
+/* CodeMirror 编辑器样式 */
 .code-editor {
   flex: 1;
   background: #f7f7f8;
@@ -280,12 +374,14 @@ html, body, #app {
   gap: 15px;
 }
 
+/* 输入和目标容器 */
 .input-target-container {
   display: flex;
   gap: 20px;
   flex: 1;
 }
 
+/* 输入输出框 */
 .input-output-box {
   display: flex;
   flex-direction: column;
@@ -295,15 +391,20 @@ html, body, #app {
   border-radius: 8px;
   border: 1px solid #ddd;
   height: 100%;
+  box-sizing: border-box; /* 包含内边距和边框在内 */
 }
 
+/* 输入输出标题 */
 .input-output-title {
   margin-bottom: 5px;
   font-size: 16px;
   font-weight: bold;
 }
 
-.input-area, .target-area, .output-area {
+/* 输入、目标和输出文本区域 */
+.input-area,
+.target-area,
+.output-area {
   flex: 1;
   height: 100%;
   padding: 10px;
@@ -317,20 +418,46 @@ html, body, #app {
   overflow: auto;
 }
 
+/* 输出区域 */
 .output-box {
   flex: 1;
   overflow: auto;
   height: 100%;
 }
 
+/* 输出成功样式 */
 .output-area.success {
   background-color: #d4edda;
   border-color: #c3e6cb;
 }
 
+/* 输出失败样式 */
 .output-area.failure {
   background-color: #f8d7da;
   border-color: #f5c6cb;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .divider {
+    display: none; /* 小屏幕隐藏分隔栏 */
+  }
+
+  .problem-container,
+  .editor-container {
+    width: 100%; /* 在小屏幕上占满宽度 */
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .editor-container {
+    padding-top: 10px;
+  }
 }
 </style>
 

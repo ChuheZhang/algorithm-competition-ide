@@ -18,6 +18,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -46,9 +47,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -58,10 +61,11 @@ button:focus-visible {
   padding: 2em;
 }
 
+/* 修改这里，移除 max-width 和 padding 限制 */
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  /* max-width: 1280px;  移除此限制 */
+  margin: 0;
+  padding: 0; /* 移除 padding */
   text-align: center;
 }
 
@@ -77,3 +81,4 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
