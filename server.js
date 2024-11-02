@@ -3,12 +3,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
-app.use(cors()); // 启用 CORS 支持跨域请求
-app.use(bodyParser.json()); // 解析请求体为 JSON
+app.use(cors());
+app.use(bodyParser.json());
 
-// 模拟从 Codeforces 获取的题目信息
+// 模拟从Codeforces获取的题目信息
 app.get('/codeforces-problem', (req, res) => {
     res.json({
         description: `
@@ -28,27 +29,35 @@ app.get('/codeforces-problem', (req, res) => {
 // 运行代码的路由
 app.post('/run-code', (req, res) => {
     const { code, language, input } = req.body;
-
     const commands = {
-        javascript: `node -e "${code.replace(/"/g, '\\"')}"`,
-        python: `python3 -c "${code.replace(/"/g, '\\"')}"`,
-        cpp: `g++ -o temp && ./temp`,
+        javascript: `echo "${input}" | node -e "${code.replace(/"/g, '\"')}"`,
+        python: `echo "${input}" | python3 -c "${code.replace(/"/g, '\"')}"`,
+        cpp: `g++ temp.cpp -o temp && echo "${input}" | ./temp`,
     };
+
+    if (language === 'cpp') {
+        // 为 C++ 代码生成临时文件
+        fs.writeFileSync('temp.cpp', code);
+    }
 
     const command = commands[language];
     if (!command) return res.status(400).send('Unsupported language');
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
-            res.json({ output: stderr });
-        } else {
-            res.json({ output: stdout });
+            return res.json({ output: stderr });
         }
+        res.json({ output: stdout });
     });
 });
 
-// 启动服务监听端口 3000
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000');
+});
+
+// Prevent Tab key from moving focus to the next input field
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "script-src 'self'");
+    next();
 });
 

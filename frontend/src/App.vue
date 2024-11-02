@@ -1,47 +1,49 @@
 <template>
   <div id="app" class="app-container">
-    <!-- Problem Description Section -->
-    <div class="problem-container">
-      <h3 class="section-title">Problem Description</h3>
-      <div v-html="problemDescription" class="problem-description"></div>
-    </div>
-
-    <!-- Code Editor and Input/Output Section -->
-    <div class="editor-container">
-      <div class="editor-controls">
-        <label for="language" class="form-label">Select Language:</label>
-        <select v-model="selectedLanguage" id="language" class="form-control language-select" @change="updateLanguage">
-          <option value="cpp">C++</option>
-          <option value="javascript">JavaScript</option>
-          <option value="python">Python</option>
-        </select>
-        <button @click="runCode" class="btn btn-run">Run Code</button>
+    <div class="center-content">
+      <!-- Problem Description Section -->
+      <div class="problem-container">
+        <h3 class="section-title">Problem Description</h3>
+        <div v-html="problemDescription" class="problem-description"></div>
       </div>
 
-      <!-- CodeMirror Editor -->
-      <div ref="editor" class="code-editor"></div>
-
-      <!-- Input, Target, and Output Sections -->
-      <div class="input-target-output-section">
-        <!-- Input and Target Section -->
-        <div class="input-target-container">
-          <!-- Input Section -->
-          <div class="input-output-box">
-            <label for="inputArea" class="input-output-title">Input:</label>
-            <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
-          </div>
-
-          <!-- Target Section -->
-          <div class="input-output-box">
-            <label for="targetArea" class="input-output-title">Target:</label>
-            <textarea v-model="targetOutput" id="targetArea" class="form-control target-area" rows="4"></textarea>
-          </div>
+      <!-- Code Editor and Input/Output Section -->
+      <div class="editor-container">
+        <div class="editor-controls">
+          <label for="language" class="form-label">Select Language:</label>
+          <select v-model="selectedLanguage" id="language" class="form-control language-select" @change="updateLanguage">
+            <option value="cpp">C++</option>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+          </select>
+          <button @click="runCode" class="btn btn-run">Run Code</button>
         </div>
 
-        <!-- Output Section -->
-        <div class="input-output-box output-box">
-          <label for="outputArea" class="input-output-title">Output:</label>
-          <textarea v-model="output" id="outputArea" :class="outputClass" class="form-control output-area" rows="4"></textarea>
+        <!-- CodeMirror Editor -->
+        <div ref="editor" class="code-editor"></div>
+
+        <!-- Input, Target, and Output Sections -->
+        <div class="input-target-output-section">
+          <!-- Input and Target Section -->
+          <div class="input-target-container">
+            <!-- Input Section -->
+            <div class="input-output-box">
+              <label for="inputArea" class="input-output-title">Input:</label>
+              <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
+            </div>
+
+            <!-- Target Section -->
+            <div class="input-output-box">
+              <label for="targetArea" class="input-output-title">Target:</label>
+              <textarea v-model="targetOutput" id="targetArea" class="form-control target-area" rows="4"></textarea>
+            </div>
+          </div>
+
+          <!-- Output Section -->
+          <div class="input-output-box output-box">
+            <label for="outputArea" class="input-output-title">Output:</label>
+            <textarea v-model="output" id="outputArea" class="form-control output-area" rows="4"></textarea>
+          </div>
         </div>
       </div>
     </div>
@@ -96,7 +98,7 @@ export default {
                 textAlign: "left",
                 minHeight: "400px",
                 height: "100%",
-                overflow: "auto",
+                overflow: "auto", // 允许代码内容滑动
               },
               ".cm-content": {
                 textAlign: "left",
@@ -167,6 +169,7 @@ export default {
 </script>
 
 <style>
+/* 让整个网页填满浏览器宽度和高度 */
 html, body, #app {
   width: 100%;
   height: 100%;
@@ -174,19 +177,33 @@ html, body, #app {
   padding: 0;
   overflow: hidden;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* 整体布局 */
 .app-container {
   display: flex;
   flex-direction: row;
   gap: 20px;
   padding: 20px;
   background-color: #f9fafb;
+  box-sizing: border-box;
+  max-width: 1200px;
   width: 100%;
   height: 100%;
-  box-sizing: border-box;
 }
 
+.center-content {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+}
+
+/* 问题描述区域 */
 .problem-container {
   flex: 1;
   padding: 20px;
@@ -194,6 +211,7 @@ html, body, #app {
   border-right: 1px solid #ddd;
   overflow-y: auto;
   height: 100%;
+  word-break: break-word; /* 确保文本不会溢出 */
 }
 
 .section-title {
@@ -208,8 +226,9 @@ html, body, #app {
   line-height: 1.6;
 }
 
+/* 编辑器和输入、输出区域 */
 .editor-container {
-  flex: 2;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -251,14 +270,14 @@ html, body, #app {
   overflow: auto;
   font-family: monospace;
   border: 1px solid #ddd;
-  height: calc(50% - 20px);
+  height: 400px;
 }
 
+/* 输入、目标和输出区域 */
 .input-target-output-section {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  height: calc(50% - 20px);
 }
 
 .input-target-container {
