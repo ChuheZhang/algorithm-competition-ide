@@ -38,7 +38,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateEffect, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
 import { javascript } from "@codemirror/lang-javascript";
@@ -48,13 +48,15 @@ import { cpp } from "@codemirror/lang-cpp";
 export default {
   setup() {
     const editor = ref(null);
-    const code = ref("// Write your C++ code here...\n");
     const inputTest = ref("");
     const output = ref("");
     const selectedLanguage = ref("cpp"); // 默认设置为 C++
     const problemDescription = ref("");
 
     let editorView;
+
+    // 使用 Compartment 动态管理语言扩展
+    const languageCompartment = new Compartment();
 
     // 动态更新语言扩展
     const getLanguageExtension = (language) => {
@@ -70,15 +72,23 @@ export default {
     };
 
     const initializeEditor = () => {
+      const languageExtension = getLanguageExtension(selectedLanguage.value);
+
       editorView = new EditorView({
         state: EditorState.create({
-          doc: code.value,
+          doc: "", // 初始不显示任何代码提示
           extensions: [
             basicSetup,
-            getLanguageExtension(selectedLanguage.value), // 根据默认语言设置扩展
+            languageCompartment.of(languageExtension),
             EditorView.lineWrapping,
             EditorView.theme({
-              "&.cm-editor": { textAlign: "left" },
+              "&.cm-editor": {
+                textAlign: "left", // 确保文本左对齐
+                minHeight: "400px", // 设置编辑器最小高度
+              },
+              ".cm-content": {
+                textAlign: "left", // 确保代码编辑内容左对齐
+              },
             }),
           ],
         }),
@@ -89,21 +99,10 @@ export default {
     const updateLanguage = () => {
       if (editorView) {
         const languageExtension = getLanguageExtension(selectedLanguage.value);
-        editorView.dispatch({
-          effects: EditorState.reconfigure.of([basicSetup, languageExtension, EditorView.lineWrapping]),
-        });
 
-        // 根据选择的语言更新代码模板
-        code.value =
-          selectedLanguage.value === "cpp"
-            ? "// Write your C++ code here...\n"
-            : selectedLanguage.value === "javascript"
-            ? "// Write your JavaScript code here...\n"
-            : "# Write your Python code here...\n";
-
-        // 将新模板设置到编辑器
+        // 通过 Compartment 更新语言扩展，不修改现有的代码内容
         editorView.dispatch({
-          changes: { from: 0, to: editorView.state.doc.length, insert: code.value },
+          effects: languageCompartment.reconfigure(languageExtension),
         });
       }
     };
@@ -137,7 +136,6 @@ export default {
 
     return {
       editor,
-      code,
       inputTest,
       output,
       selectedLanguage,
@@ -155,22 +153,22 @@ export default {
   display: flex;
   flex-direction: row;
   gap: 20px;
-  padding: 20px;
+  padding: 0; /* 去除内边距 */
   background-color: #f9fafb;
-  height: 100vh;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
+  width: 100%; /* 宽度100% */
+  height: 100vh; /* 高度100vh以填满浏览器 */
 }
 
 /* 问题描述区域 */
 .problem-container {
-  flex: 1;
+  flex: 1; /* 让问题描述区域填满剩余空间 */
   padding: 20px;
   background-color: #ffffff;
   border-right: 1px solid #ddd;
-  overflow-y: auto;
+  overflow-y: auto; /* 允许问题描述区域滚动 */
 }
 
+/* 样式 */
 .section-title {
   font-size: 18px;
   font-weight: bold;
@@ -185,7 +183,7 @@ export default {
 
 /* 编辑器和输出区域 */
 .editor-container {
-  flex: 2;
+  flex: 2; /* 让代码编辑区域填满剩余空间 */
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -216,12 +214,12 @@ export default {
 }
 
 .code-editor {
-  flex: 1;
+  flex: 1; /* 让编辑器区域占据剩余空间 */
   background: #f7f7f8;
   color: #333;
   border-radius: 8px;
   padding: 10px;
-  overflow-y: auto;
+  overflow-y: auto; /* 允许代码编辑器滚动 */
   font-family: monospace;
   border: 1px solid #ddd;
 }
@@ -233,11 +231,12 @@ export default {
 }
 
 .input-container, .output-container {
-  flex: 1;
+  flex: 1; /* 让输入输出框填满剩余空间 */
   background-color: #ffffff;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid #ddd;
+  max-height: 150px; /* 限制最大高度以避免溢出 */
 }
 
 .input-area, .output-area {

@@ -47,3 +47,20 @@ app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000');
 });
 
+const express = require("express");
+const cors = require("cors"); // 引入 CORS 中间件
+
+const app = express();
+app.use(cors()); // 启用 CORS
+app.use(express.json());
+
+// 示例路由
+app.get("/codeforces-problem", (req, res) => {
+  res.json({ description: "This is a sample problem from Codeforces." });
+});
+
+// 监听端口
+app.listen(3000, () => {
+  console.log("Server is running on http://localhost:3000");
+});
+
