@@ -6,7 +6,7 @@
       <div v-html="problemDescription" class="problem-description"></div>
     </div>
 
-    <!-- Code Editor and Output Section -->
+    <!-- Code Editor and Input/Output Section -->
     <div class="editor-container">
       <div class="editor-controls">
         <label for="language" class="form-label">Select Language:</label>
@@ -22,14 +22,17 @@
       <div ref="editor" class="code-editor"></div>
 
       <!-- Input and Output Sections -->
-      <div class="input-output-container">
-        <div class="input-container">
-          <h5>Input</h5>
-          <textarea v-model="inputTest" class="form-control input-area" rows="4"></textarea>
+      <div class="input-output-pair">
+        <!-- Input Section -->
+        <div class="input-output-box">
+          <label for="inputArea" class="input-output-title">Input:</label>
+          <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
         </div>
-        <div class="output-container">
-          <h5>Output</h5>
-          <pre class="output-area">{{ output }}</pre>
+
+        <!-- Output Section -->
+        <div class="input-output-box">
+          <label for="outputArea" class="input-output-title">Output:</label>
+          <pre id="outputArea" class="output-area">{{ output }}</pre>
         </div>
       </div>
     </div>
@@ -38,7 +41,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import { EditorState, StateEffect, Compartment } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
 import { javascript } from "@codemirror/lang-javascript";
@@ -50,15 +53,12 @@ export default {
     const editor = ref(null);
     const inputTest = ref("");
     const output = ref("");
-    const selectedLanguage = ref("cpp"); // 默认设置为 C++
+    const selectedLanguage = ref("cpp");
     const problemDescription = ref("");
 
     let editorView;
-
-    // 使用 Compartment 动态管理语言扩展
     const languageCompartment = new Compartment();
 
-    // 动态更新语言扩展
     const getLanguageExtension = (language) => {
       switch (language) {
         case "javascript":
@@ -76,18 +76,18 @@ export default {
 
       editorView = new EditorView({
         state: EditorState.create({
-          doc: "", // 初始不显示任何代码提示
+          doc: "",
           extensions: [
             basicSetup,
             languageCompartment.of(languageExtension),
             EditorView.lineWrapping,
             EditorView.theme({
               "&.cm-editor": {
-                textAlign: "left", // 确保文本左对齐
-                minHeight: "400px", // 设置编辑器最小高度
+                textAlign: "left",
+                minHeight: "400px",
               },
               ".cm-content": {
-                textAlign: "left", // 确保代码编辑内容左对齐
+                textAlign: "left",
               },
             }),
           ],
@@ -100,7 +100,6 @@ export default {
       if (editorView) {
         const languageExtension = getLanguageExtension(selectedLanguage.value);
 
-        // 通过 Compartment 更新语言扩展，不修改现有的代码内容
         editorView.dispatch({
           effects: languageCompartment.reconfigure(languageExtension),
         });
@@ -126,7 +125,6 @@ export default {
     onMounted(() => {
       initializeEditor();
 
-      // Fetch problem description
       fetch("http://localhost:3000/codeforces-problem")
         .then((res) => res.json())
         .then((data) => {
@@ -148,27 +146,37 @@ export default {
 </script>
 
 <style>
+/* 让整个网页填满浏览器宽度和高度 */
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* 整体布局 */
 .app-container {
   display: flex;
   flex-direction: row;
   gap: 20px;
-  padding: 0; /* 去除内边距 */
+  padding: 20px;
   background-color: #f9fafb;
-  width: 100%; /* 宽度100% */
-  height: 100vh; /* 高度100vh以填满浏览器 */
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 /* 问题描述区域 */
 .problem-container {
-  flex: 1; /* 让问题描述区域填满剩余空间 */
+  flex: 1;
   padding: 20px;
   background-color: #ffffff;
   border-right: 1px solid #ddd;
-  overflow-y: auto; /* 允许问题描述区域滚动 */
+  overflow-y: auto;
+  max-width: 40%;
 }
 
-/* 样式 */
 .section-title {
   font-size: 18px;
   font-weight: bold;
@@ -183,13 +191,14 @@ export default {
 
 /* 编辑器和输出区域 */
 .editor-container {
-  flex: 2; /* 让代码编辑区域填满剩余空间 */
+  flex: 3;
   display: flex;
   flex-direction: column;
   gap: 20px;
   background-color: #f5f6f7;
   padding: 20px;
   border-radius: 8px;
+  overflow: hidden;
 }
 
 .editor-controls {
@@ -214,33 +223,42 @@ export default {
 }
 
 .code-editor {
-  flex: 1; /* 让编辑器区域占据剩余空间 */
+  flex: 1;
   background: #f7f7f8;
   color: #333;
   border-radius: 8px;
   padding: 10px;
-  overflow-y: auto; /* 允许代码编辑器滚动 */
+  overflow-y: auto;
   font-family: monospace;
   border: 1px solid #ddd;
 }
 
-/* 输入和输出框 */
-.input-output-container {
+/* 输入和输出区域 */
+.input-output-pair {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.input-container, .output-container {
-  flex: 1; /* 让输入输出框填满剩余空间 */
+.input-output-box {
+  display: flex;
+  align-items: center;
   background-color: #ffffff;
-  padding: 10px;
+  padding: 10px 20px;
   border-radius: 8px;
   border: 1px solid #ddd;
-  max-height: 150px; /* 限制最大高度以避免溢出 */
+  gap: 10px;
+}
+
+.input-output-title {
+  width: 60px;  /* 设置宽度以确保对齐 */
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .input-area, .output-area {
-  width: 100%;
+  flex: 1;
+  height: 100px; /* 固定高度 */
   padding: 10px;
   font-size: 14px;
   border: 1px solid #ddd;
@@ -248,10 +266,8 @@ export default {
   resize: vertical;
   font-family: monospace;
   color: #333;
-}
-
-.output-area {
-  background-color: #f5f6f7;
+  background-color: #f9fafb;
+  overflow-y: auto;
 }
 </style>
 
