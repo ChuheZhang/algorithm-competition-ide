@@ -21,18 +21,27 @@
       <!-- CodeMirror Editor -->
       <div ref="editor" class="code-editor"></div>
 
-      <!-- Input and Output Sections -->
-      <div class="input-output-pair">
-        <!-- Input Section -->
-        <div class="input-output-box">
-          <label for="inputArea" class="input-output-title">Input:</label>
-          <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
+      <!-- Input, Target, and Output Sections -->
+      <div class="input-target-output-section">
+        <!-- Input and Target Section -->
+        <div class="input-target-container">
+          <!-- Input Section -->
+          <div class="input-output-box">
+            <label for="inputArea" class="input-output-title">Input:</label>
+            <textarea v-model="inputTest" id="inputArea" class="form-control input-area" rows="4"></textarea>
+          </div>
+
+          <!-- Target Section -->
+          <div class="input-output-box">
+            <label for="targetArea" class="input-output-title">Target:</label>
+            <textarea v-model="targetOutput" id="targetArea" class="form-control target-area" rows="4"></textarea>
+          </div>
         </div>
 
         <!-- Output Section -->
-        <div class="input-output-box">
+        <div class="input-output-box output-box">
           <label for="outputArea" class="input-output-title">Output:</label>
-          <pre id="outputArea" class="output-area">{{ output }}</pre>
+          <pre :class="outputClass" id="outputArea">{{ output }}</pre>
         </div>
       </div>
     </div>
@@ -40,7 +49,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
@@ -53,6 +62,7 @@ export default {
     const editor = ref(null);
     const inputTest = ref("");
     const output = ref("");
+    const targetOutput = ref("");
     const selectedLanguage = ref("cpp");
     const problemDescription = ref("");
 
@@ -85,6 +95,8 @@ export default {
               "&.cm-editor": {
                 textAlign: "left",
                 minHeight: "400px",
+                height: "100%",
+                overflow: "auto", // 允许代码内容滑动
               },
               ".cm-content": {
                 textAlign: "left",
@@ -122,6 +134,13 @@ export default {
       }
     };
 
+    const outputClass = computed(() => {
+      if (output.value === "") return "output-area";
+      return output.value.trim() === targetOutput.value.trim()
+        ? "output-area success"
+        : "output-area failure";
+    });
+
     onMounted(() => {
       initializeEditor();
 
@@ -136,10 +155,12 @@ export default {
       editor,
       inputTest,
       output,
+      targetOutput,
       selectedLanguage,
       problemDescription,
       runCode,
       updateLanguage,
+      outputClass,
     };
   },
 };
@@ -189,7 +210,7 @@ html, body, #app {
   line-height: 1.6;
 }
 
-/* 编辑器和输出区域 */
+/* 编辑器和输入、输出区域 */
 .editor-container {
   flex: 3;
   display: flex;
@@ -228,35 +249,42 @@ html, body, #app {
   color: #333;
   border-radius: 8px;
   padding: 10px;
-  overflow-y: auto;
+  overflow: hidden;
   font-family: monospace;
   border: 1px solid #ddd;
+  height: 400px; /* 固定编辑器高度，内容可滑动 */
 }
 
-/* 输入和输出区域 */
-.input-output-pair {
+/* 输入、目标和输出区域 */
+.input-target-output-section {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
+.input-target-container {
+  display: flex;
+  gap: 20px;
+  flex: 1; /* 保持自适应 */
+}
+
 .input-output-box {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  flex: 1;
   background-color: #ffffff;
   padding: 10px 20px;
   border-radius: 8px;
   border: 1px solid #ddd;
-  gap: 10px;
 }
 
 .input-output-title {
-  width: 60px;  /* 设置宽度以确保对齐 */
+  margin-bottom: 5px;
   font-size: 16px;
   font-weight: bold;
 }
 
-.input-area, .output-area {
+.input-area, .target-area, .output-area {
   flex: 1;
   height: 100px; /* 固定高度 */
   padding: 10px;
@@ -267,7 +295,17 @@ html, body, #app {
   font-family: monospace;
   color: #333;
   background-color: #f9fafb;
-  overflow-y: auto;
+  overflow: auto; /* 允许内容水平滚动 */
+}
+
+.output-area.success {
+  background-color: #d4edda;  /* 绿色背景表示通过 */
+  border-color: #c3e6cb;
+}
+
+.output-area.failure {
+  background-color: #f8d7da;  /* 红色背景表示失败 */
+  border-color: #f5c6cb;
 }
 </style>
 
