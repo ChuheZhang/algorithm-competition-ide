@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
+const axios = require('axios'); // 新增 axios 用于 HTTP 请求
 
 const app = express();
 app.use(cors());
@@ -27,6 +28,29 @@ Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
 \`\`\`
         `
     });
+});
+
+// 新增获取比赛题目的路由
+app.post('/get-contest-problems', async (req, res) => {
+    const { contestId } = req.body;
+    
+    try {
+        const response = await axios.get(`https://codeforces.com/api/contest.standings?contestId=${contestId}&from=1&count=1`);
+        
+        if (response.data.status !== "OK") {
+            return res.status(500).json({ error: "无法获取题目列表" });
+        }
+        
+        const problems = response.data.result.problems.map((problem) => ({
+            contestId: problem.contestId,
+            index: problem.index,
+            name: problem.name,
+        }));
+        
+        res.json({ problems });
+    } catch (error) {
+        res.status(500).json({ error: "请求失败，请检查比赛ID" });
+    }
 });
 
 // 运行代码的路由
@@ -68,4 +92,3 @@ app.use((req, res, next) => {
     res.setHeader('Content-Security-Policy', "script-src 'self'");
     next();
 });
-

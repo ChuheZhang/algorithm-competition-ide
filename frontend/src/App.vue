@@ -2,6 +2,14 @@
   <div id="app" class="app-container">
     <!-- 问题描述部分 -->
     <div class="problem-container" :style="{ width: leftWidth + 'px' }">
+      <div v-if="contestProblems.length" class="problem-list">
+        <h3>题目列表</h3>
+        <ul>
+          <li v-for="problem in contestProblems" :key="problem.index">
+            <a href="#" @click.prevent="loadProblem(problem)">{{ problem.index }}</a>
+          </li>
+        </ul>
+      </div>
       <div v-html="renderedDescription" class="problem-description"></div>
     </div>
 
@@ -11,7 +19,16 @@
     <!-- 代码编辑器和输入/输出部分 -->
     <div class="editor-container" :style="{ width: rightWidth + 'px' }">
       <div class="editor-controls">
-        <label for="language" class="form-label">Select Language:</label>
+        <input
+          type="text"
+          placeholder="输入比赛ID"
+          v-model="contestId"
+          class="form-control contest-input"
+        />
+        <button @click="fetchContestProblems" class="btn btn-fetch">
+          获取比赛题目
+        </button>
+        <label for="language" class="form-label">Language:</label>
         <select
           v-model="selectedLanguage"
           id="language"
@@ -74,15 +91,17 @@
   </div>
 </template>
 
+
 <script>
 import { ref, onMounted, computed } from "vue";
-import { marked } from "marked"; // 引入 marked 库
-import { EditorState, Compartment } from "@codemirror/state";
+import axios from "axios"; // 引入 axios
+import { EditorState, Compartment } from "@codemirror/state"; // 确保引入 Compartment
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "@codemirror/basic-setup";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
+
 
 export default {
   setup() {
@@ -92,13 +111,31 @@ export default {
     const targetOutput = ref("");
     const selectedLanguage = ref("cpp");
     const problemDescription = ref("");
+    const contestId = ref("");
+    const contestProblems = ref([]);
+    const currentProblem = ref(null);
     const isLoading = ref(false);
     const outputVisible = ref(false); // 控制输出框的显示
 
     // 计算属性，用于将 Markdown 转换为 HTML
-    const renderedDescription = computed(() => {
-      return marked(problemDescription.value);
-    });
+    const renderedDescription = computed(() =>
+      currentProblem.value ? `### ${currentProblem.value.index}: ${currentProblem.value.name}` : ""
+    );
+
+    // 获取比赛题目列表的函数
+    const fetchContestProblems = async () => {
+      try {
+        const response = await axios.post("http://localhost:3000/get-contest-problems", { contestId: contestId.value });
+        contestProblems.value = response.data.problems;
+      } catch (error) {
+        alert("获取比赛题目失败，请检查比赛ID。");
+      }
+    };
+
+    // 加载选定题目的描述
+    const loadProblem = (problem) => {
+      currentProblem.value = problem;
+    };
 
     // 初始宽度设置
     const initialWidth = 960; // 1920 / 2
@@ -244,13 +281,18 @@ export default {
       output,
       targetOutput,
       selectedLanguage,
+      problemDescription,
+      contestId,
+      contestProblems,
+      currentProblem,
       renderedDescription,
+      fetchContestProblems,
+      loadProblem,
       runCode,
       updateLanguage,
       outputClass,
       isLoading,
-      outputVisible, // 返回控制输出框显示的状态
-      languages,
+      outputVisible,
       leftWidth,
       rightWidth,
       initDrag,
@@ -262,8 +304,8 @@ export default {
 
 
 
-<style>
-/* 让整个网页填满浏览器宽度和高度 */
+
+<style scoped>
 /* 让整个网页填满浏览器宽度和高度 */
 html,
 body,
@@ -344,6 +386,7 @@ body,
 /* 编辑器控制区域 */
 .editor-controls {
   display: flex;
+  justify-content: flex-end; /* 使内容靠右对齐 */
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
@@ -363,6 +406,17 @@ body,
   border-radius: 4px;
   border: none;
   cursor: pointer;
+}
+
+/* 获取比赛题目按钮 */
+.btn-fetch {
+  background-color: #007bff;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  margin-right: 10px;
 }
 
 /* CodeMirror 编辑器样式 */
@@ -472,12 +526,11 @@ body,
   .editor-container {
     padding-top: 10px;
   }
-  
 
   .divider {
     display: none; /* 小屏幕隐藏分隔栏 */
   }
 }
-
 </style>
+
 

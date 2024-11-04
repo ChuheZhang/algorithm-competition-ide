@@ -149,5 +149,13 @@ body,
   .divider {
     display: none; /* 小屏幕隐藏分隔栏 */
   }
+
+
+.editor-controls {
+  display: flex;
+  justify-content: flex-end; /* 使内容靠右对齐 */
+  align-items: center;      /* 垂直居中对齐 */
+  gap: 10px;                /* 控制标签、选择框和按钮之间的间距 */
+}
 }
 
