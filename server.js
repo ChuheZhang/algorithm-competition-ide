@@ -4,51 +4,99 @@ const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
-const axios = require('axios'); // 新增 axios 用于 HTTP 请求
+const axios = require('axios');
+const puppeteer = require('puppeteer'); // 引入 puppeteer
+const winston = require('winston'); // 引入 winston
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// 模拟从Codeforces获取的题目信息
-app.get('/codeforces-problem', (req, res) => {
-    res.json({
-        description: `
-# Sample Problem: Two Sum
-
-Given an array of integers \`nums\` and an integer \`target\`, return indices of the two numbers such that they add up to \`target\`.
-
-You may assume that each input would have **exactly one solution**, and you may not use the same element twice.
-
-## Example:
-\`\`\`
-Input: nums = [2, 7, 11, 15], target = 9
-Output: [0, 1]
-Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
-\`\`\`
-        `
-    });
+// 使用 winston 创建日志记录器
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(({ timestamp, level, message }) => {
+            return `${timestamp} [${level}]: ${message}`;
+        })
+    ),
+    transports: [
+        new winston.transports.Console(), // 输出到控制台
+        new winston.transports.File({ filename: 'error.log', level: 'error' }), // 输出到文件
+        new winston.transports.File({ filename: 'combined.log' }) // 输出所有级别到文件
+    ]
 });
 
-// 新增获取比赛题目的路由
+// 延迟函数，用于控制请求间隔
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 获取比赛题目列表和详细描述
 app.post('/get-contest-problems', async (req, res) => {
     const { contestId } = req.body;
-    
+
     try {
-        const response = await axios.get(`https://codeforces.com/api/contest.standings?contestId=${contestId}&from=1&count=1`);
-        
+        const response = await axios.get(`https://codeforces.com/api/contest.standings?contestId=${contestId}&from=1&count=100`);
+
         if (response.data.status !== "OK") {
             return res.status(500).json({ error: "无法获取题目列表" });
         }
-        
-        const problems = response.data.result.problems.map((problem) => ({
-            contestId: problem.contestId,
-            index: problem.index,
-            name: problem.name,
+
+        // 启动 Puppeteer 浏览器
+        const browser = await puppeteer.launch({ headless: false }); // 使用 headful 模式便于调试
+        const problems = await Promise.all(response.data.result.problems.map(async (problem, index) => {
+            await delay(index * 5000); // 每个请求之间增加 5 秒的间隔
+
+            try {
+                const problemUrl = `https://codeforces.com/contest/${contestId}/problem/${problem.index}`;
+                logger.info(`正在访问题目页面: ${problemUrl}`); // 打印 URL，确认其正确性
+
+                const page = await browser.newPage();
+                await page.goto(problemUrl, {
+                    waitUntil: 'networkidle2',
+                    timeout: 60000 // 设置超时时间为 60 秒
+                });
+
+                // 打印页面内容以便调试
+                const pageContent = await page.content();
+                logger.info(`页面内容: ${pageContent}`);
+
+                // 使用 Puppeteer 获取题目描述
+                const description = await page.evaluate(() => {
+                    const problemElement = document.querySelector('div.problem-statement');
+                    if (problemElement) {
+                        let descriptionHtml = '';
+                        problemElement.querySelectorAll('div').forEach(div => {
+                            descriptionHtml += div.innerHTML + '\n';
+                        });
+                        return descriptionHtml;
+                    }
+                    return '无法获取详细描述';
+                });
+
+                logger.info(`获取到题目描述: ${description}`); // 打印获取到的描述内容
+
+                return {
+                    contestId: problem.contestId,
+                    index: problem.index,
+                    name: problem.name,
+                    description: description
+                };
+            } catch (innerError) {
+                logger.error(`获取题目描述失败: ${innerError.message}`);
+                return {
+                    contestId: problem.contestId,
+                    index: problem.index,
+                    name: problem.name,
+                    description: "无法获取详细描述"
+                };
+            }
         }));
-        
+
+        await browser.close();
         res.json({ problems });
     } catch (error) {
+        logger.error(`请求失败的详细信息: ${error.message}, ${error.stack}`);
         res.status(500).json({ error: "请求失败，请检查比赛ID" });
     }
 });
@@ -72,6 +120,7 @@ app.post('/run-code', (req, res) => {
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
+            logger.error(`运行代码失败: ${stderr}`);
             return res.json({ output: stderr });
         }
         // 删除 C++ 临时文件
@@ -84,7 +133,7 @@ app.post('/run-code', (req, res) => {
 });
 
 app.listen(3000, () => {
-    console.log('Server is running on http://localhost:3000');
+    logger.info('Server is running on http://localhost:3000');
 });
 
 // Prevent Tab key from moving focus to the next input field

@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
@@ -26,5 +27,7 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    sourcemap: false, // 禁用 Source Map，减少开发环境中的源映射错误
+  },
 });
-

@@ -91,7 +91,6 @@
   </div>
 </template>
 
-
 <script>
 import { ref, onMounted, computed } from "vue";
 import axios from "axios"; // 引入 axios
@@ -101,7 +100,6 @@ import { basicSetup } from "@codemirror/basic-setup";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
 import { cpp } from "@codemirror/lang-cpp";
-
 
 export default {
   setup() {
@@ -117,10 +115,16 @@ export default {
     const isLoading = ref(false);
     const outputVisible = ref(false); // 控制输出框的显示
 
-    // 计算属性，用于将 Markdown 转换为 HTML
-    const renderedDescription = computed(() =>
-      currentProblem.value ? `### ${currentProblem.value.index}: ${currentProblem.value.name}` : ""
-    );
+    // 计算属性，用于将题目名称和描述转换为 HTML
+    const renderedDescription = computed(() => {
+      if (currentProblem.value) {
+        return `
+          <h3>${currentProblem.value.index}: ${currentProblem.value.name}</h3>
+          <p>${currentProblem.value.description}</p>
+        `;
+      }
+      return "";
+    });
 
     // 获取比赛题目列表的函数
     const fetchContestProblems = async () => {
@@ -233,11 +237,6 @@ export default {
 
     onMounted(() => {
       initializeEditor();
-      fetch("http://localhost:3000/codeforces-problem")
-        .then((res) => res.json())
-        .then((data) => {
-          problemDescription.value = data.description;
-        });
     });
 
     // 拖拽相关
@@ -300,10 +299,6 @@ export default {
   },
 };
 </script>
-
-
-
-
 
 <style scoped>
 /* 让整个网页填满浏览器宽度和高度 */
@@ -466,7 +461,7 @@ body,
   font-weight: bold;
 }
 
-/* 输入、目标和输出文本区域 */
+/* 输入、目标和输出文本区 */
 .input-area,
 .target-area,
 .output-area {
@@ -532,5 +527,3 @@ body,
   }
 }
 </style>
-
-
